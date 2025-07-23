@@ -16,6 +16,13 @@ class DSFeynmanDiagram():
         ptype_simple = ["R1g", "R2g", "R3g", "R4g",
                         "R1f", "R2f", "R3f", "R4f"]
         ptype_relax = ["R1g_RL0", "R2g_RL0","R1f_L0", "R2f_RL0"]
+        ptype_SSS = []
+        ptype_TSS = []
+        ptype_STS = [] #is actually ptype_relax also - but that one is without coherence transfer LPs
+        ptype_SST = []
+        ptype_TTS = []
+        ptype_TST = []
+        ptype_STT = []
         
         self.states = {}
         self.pointer = 0
@@ -25,6 +32,13 @@ class DSFeynmanDiagram():
         self.light_transitions = {}
         self.ltcount = 0
 
+        # Separated light transition and transfer counts
+        
+        self.trans_transitions = {}
+        self.ttcount = 0
+
+        self.count = 0
+        
         if ptype in ptype_simple + ptype_relax:
             self.type = ptype
         else:
@@ -32,11 +46,20 @@ class DSFeynmanDiagram():
         
         self.states[self.pointer] = ["g", "g"]
         self.add_states_line()
-        
+        #
+        # This must be changed to take into consideration s1,s2,s3 intervals due to transfer (TST is alreasy implemented in ptype_relax)
+        #
         if self.type in ptype_simple:
             self.dimensions = {"t1":0, "t2":-1, "t3":1}
         elif self.type in ptype_relax:
             self.dimensions = {"t1":0, "t2":-1, "t3":-1, "t4":1}
+        elif self.type in ptype_SSS:
+        elif self.type in ptype_TSS: 
+        elif self.type in ptype_STS:
+        elif self.type in ptype_SST:
+        elif self.type in ptype_TTS:
+        elif self.type in ptype_TST:
+        elif self.type in ptype_STT:
         
         self.diag_name = None
 
@@ -80,12 +103,35 @@ class DSFeynmanDiagram():
         """
         self.pointer += 1
         self.states[self.pointer] = [to,to]
-        self.light_transitions[self.ltcount] = \
+        self.trans_transitions[self.ttcount] = \
             (to, to)
-        self.ltcount += 1
+        self.ttcount += 1
         self._pic_rep = "      |..........|\n"+self._pic_rep
         self.add_states_line()
         
+    def add_left_coh_trans(self, to="b"): 
+        """Coherence transfer (ket)
+        
+        """
+        self.pointer += 1
+        self.states[self.pointer] = [to,self.states[self.pointer-1][1]]
+        self.trans_transitions[self.ttcount] = \
+            (to, self.states[self.pointer-1][1])
+        self.ttcount += 1
+        self._pic_rep = "      |..........|\n"+self._pic_rep
+        self.add_states_line()    
+
+    def add_right_coh_trans(self, to="b"): 
+        """Coherence transfer (bra)
+        
+        """
+        self.pointer += 1
+        self.states[self.pointer] = [self.states[self.pointer-1][0],to]
+        self.trans_transitions[self.ttcount] = \
+            (self.states[self.pointer-1][0], to)
+        self.ttcount += 1
+        self._pic_rep = "      |..........|\n"+self._pic_rep
+        self.add_states_line()    
         
     def finish(self, end="g"):
         """Finishes the diagram with a given state
@@ -93,7 +139,10 @@ class DSFeynmanDiagram():
         """
         self.add_arrow("left", "<---", end)
         self._pic_rep = "\n"+self._pic_rep
-        self.count = self.pointer - 1
+        # self.count does not exist in this code only self.ltcount and I added ttcount, so I comment this the following. Also one can add new self.count attribute in __init__.
+        #
+        # self.count = self.pointer - 1
+        #
         self.finished = True
 
 
@@ -114,7 +163,9 @@ class DSFeynmanDiagram():
 
     
     def get_phase_factor(self, dimensions=None):
-        """Returns the phase factor for the present diagram, with reshaped time symbols if provided."""
+        """Returns the phase factor for the present diagram, with reshaped time symbols if provided.
+        
+        FIX IT: Coherense transfer due to initial term is not implemented here yet"""
     
         fact = "-"
         Nst = len(self.states)
@@ -174,7 +225,13 @@ class DSFeynmanDiagram():
         kk = 0
         Uops = ""
         Uops_list = []
- 
+
+        #
+        # Since I have not found that there is count defined anywhere, I will define it int __init__ and then use it below:
+        #
+        
+        self.count = self.ltcount + self.ttcount
+        
         for key in self.states:
             if kk > 0 and kk < self.count+1:
                 sts = self.states[key]
@@ -183,7 +240,7 @@ class DSFeynmanDiagram():
                 symbols.add(rightstate)
                 
                 times = dict()
-                if kk <= len(self.dimensions): #4:  
+                if kk <= len(self.dimensions): #4:  # here will be a problem with SSS, SST etc. new type of LPs
                     tms = "t"+str(kk)
                     times[tms] = 1 
                     symbols.add(tms)
@@ -228,12 +285,18 @@ class DSFeynmanDiagram():
                 if leftstate == "g":
                     rUop = "Ug(t"+str(kk)+")"+rUop
                     if operators:
+                        #
+                        # why not use append as above in "rightstate" evolution
+                        #
                         list_st = [Uop(state="g", times=times, dagger=False)]
                         list_st.extend(rUops_list)
                         rUops_list = list_st
                 else:
                     rUop = "Ue("+leftstate+",t"+str(kk)+")"+rUop
                     if operators:
+                        #
+                        # why not use append as above in "rightstate" evolution
+                        #
                         list_st = [Uop(state=leftstate, times=times, dagger=False)]
                         list_st.extend(rUops_list)
                         rUops_list = list_st
@@ -321,8 +384,10 @@ from quantarhei.symbolic.cumulant import evaluate_cumulant
         self._check_finished()
         print("\nDiagram of",self.type,"type\n")
         print(self)
-        print("Light interaction count:", self.count) 
-        print("Transitions:", self.light_transitions)
+        print("Light interaction count:", self.ltcount) 
+        print("Light Transitions:", self.light_transitions)
+        print("Transfer count:", self.ttcount) 
+        print("Transfer Transitions:", self.trans_transitions)
               
               
     def _dipole_arrangement(self, ground='g'):
