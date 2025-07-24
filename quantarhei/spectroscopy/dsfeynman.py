@@ -139,10 +139,7 @@ class DSFeynmanDiagram():
         """
         self.add_arrow("left", "<---", end)
         self._pic_rep = "\n"+self._pic_rep
-        # self.count does not exist in this code only self.ltcount and I added ttcount, so I comment this the following. Also one can add new self.count attribute in __init__.
-        #
-        # self.count = self.pointer - 1
-        #
+        self.count = self.pointer - 1
         self.finished = True
 
 
@@ -226,11 +223,7 @@ class DSFeynmanDiagram():
         Uops = ""
         Uops_list = []
 
-        #
-        # Since I have not found that there is count defined anywhere, I will define it int __init__ and then use it below:
-        #
         
-        self.count = self.ltcount + self.ttcount
         
         for key in self.states:
             if kk > 0 and kk < self.count+1:
@@ -772,6 +765,9 @@ class R4g_Diagram(DSFeynmanDiagram):
         self.diag_name="R4g"
 
 class R1f_Diagram(DSFeynmanDiagram):
+    #
+    # Isn't this the R2f* ?
+    #
     """R1f diagram
 
     Diagram of R1f type
@@ -799,6 +795,9 @@ class R1f_Diagram(DSFeynmanDiagram):
         self.diag_name="R1f"        
 
 class R2f_Diagram(DSFeynmanDiagram):
+    #
+    # isn't this the R1f*? 
+    #
     """R2f diagram
 
     Diagram of R2f type
