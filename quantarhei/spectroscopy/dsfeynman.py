@@ -3,6 +3,8 @@
 from ..symbolic.cumulant import Uop
 from ..symbolic.cumulant import UopEater
 from ..symbolic.cumulant import transform_to_einsum_expr
+import json
+import os
 
 class DSFeynmanDiagram():
     """ Double-sided Feynman diagrams
